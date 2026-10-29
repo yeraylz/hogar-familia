@@ -1,0 +1,50 @@
+services:
+  hogar:
+    build: .                     # el Dockerfile está en esta misma carpeta
+    container_name: hogar
+    restart: unless-stopped
+    environment:
+      - HOGAR_DB=/datos/hogar.db
+      - TZ=Europe/Madrid
+      # Actualización automática de la IP en Cloudflare (opcional). Los valores van en el
+      # archivo .env de esta misma carpeta (ver env-ejemplo.txt); si no existe, queda desactivado.
+      - CF_API_TOKEN=${CF_API_TOKEN:-}
+      - CF_ZONE_ID=${CF_ZONE_ID:-}
+      - CF_DDNS_NOMBRES=${CF_DDNS_NOMBRES:-}
+      # Cifrado en reposo (opcional): si se define, las fotos de perfil y los tickets de gastos
+      # se guardan cifrados en la base de datos y en disco.
+      - HOGAR_CLAVE_CHAT=${HOGAR_CLAVE_CHAT:-}
+      # Nombres de los perfiles de la casa (separados por comas), p. ej. "Ana,Luis,Casa". Si no
+      # se indica, se crean unos nombres de ejemplo que puedes renombrar luego desde la app.
+      - HOGAR_PERFILES=${HOGAR_PERFILES:-}
+      # Ubicación para el tiempo del saludo de "Hoy" (por defecto, Madrid).
+      - HOGAR_LAT=${HOGAR_LAT:-}
+      - HOGAR_LON=${HOGAR_LON:-}
+      # URL del menú del comedor del colegio, si lo publican en una web (opcional). Ver colegio.go.
+      - HOGAR_MENU_COLE_URL=${HOGAR_MENU_COLE_URL:-}
+    volumes:
+      - ./datos/hogar:/datos     # aquí vive hogar.db de verdad, fuera del contenedor
+    ports:
+      - "8080:8080"
+
+  # --- Ejemplo para cuando instales Jellyfin ---
+  # jellyfin:
+  #   image: jellyfin/jellyfin:latest
+  #   container_name: jellyfin
+  #   restart: unless-stopped
+  #   volumes:
+  #     - ./datos/jellyfin/config:/config
+  #     - ./datos/jellyfin/cache:/cache
+  #     - /ruta/a/tus/peliculas:/media
+  #   ports:
+  #     - "8096:8096"
+
+  # --- Ejemplo para cuando instales domótica (Home Assistant) ---
+  # homeassistant:
+  #   image: homeassistant/home-assistant:stable
+  #   container_name: homeassistant
+  #   restart: unless-stopped
+  #   privileged: true
+  #   network_mode: host
+  #   volumes:
+  #     - ./datos/homeassistant:/config

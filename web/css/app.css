@@ -1,0 +1,257 @@
+/* Comportamiento de app nativa: sin «tirar para refrescar», sin rebote que arrastra la página,
+   sin zoom por doble toque ni menú de mantener pulsado en botones e imágenes. */
+html, body { overscroll-behavior-y: none; overscroll-behavior-x: none; }
+html { -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+.overflow-y-auto, .overflow-auto, [style*="overflow-y:auto"], [style*="overflow-y: auto"], [style*="overflow:auto"] { overscroll-behavior: contain; }
+button, a, nav, label, summary, img, svg, [role="button"], [onclick] { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+img { -webkit-user-drag: none; }
+input, textarea, [contenteditable="true"] { -webkit-user-select: text; user-select: text; -webkit-touch-callout: default; }
+body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+    .comprado { text-decoration: line-through; color: #9ca3af; }
+
+    /* Estilos Estilo Google Calendar */
+    .fc { font-family: 'Inter', sans-serif; }
+    .fc-header-toolbar { padding: 0.5rem 0.75rem 0 !important; margin-bottom: 0.75rem !important; }
+    .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 700; color: #0f172a; text-transform: capitalize; }
+    .fc-button { background-color: #ffffff !important; border: 1px solid #e2e8f0 !important; color: #334155 !important; font-size: 0.8rem !important; font-weight: 600 !important; border-radius: 0.6rem !important; text-transform: capitalize !important; box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
+    .fc-button:hover { background-color: #f8fafc !important; color: #0f172a !important; }
+    .fc-button-active { background-color: #e0f2fe !important; border-color: #38bdf8 !important; color: #0369a1 !important; }
+    .fc-daygrid-day-number { font-size: 0.8rem; color: #475569; font-weight: 600; padding: 6px 8px !important; }
+    .fc-col-header-cell-cushion { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #64748b; padding: 8px 0 !important; }
+    
+    /* Ampliar la altura mínima de las filas para que quepan holgadamente los detalles */
+    .fc-daygrid-day-frame {
+      min-height: 115px !important;
+    }
+
+    /* Eventos visuales */
+    .fc-daygrid-event {
+      border-radius: 4px !important;
+      padding: 1px 4px !important;
+      margin-top: 1px !important;
+      margin-bottom: 1px !important;
+      font-size: 0.6rem !important;
+      line-height: 1.15 !important;
+      border: none !important;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+      transition: transform 0.1s ease;
+    }
+    .fc-daygrid-event:hover {
+      transform: scale(1.01);
+      filter: brightness(0.95);
+    }
+    .fc-event-main {
+      color: #ffffff !important;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .fc-event-time { font-weight: 700 !important; margin-right: 2px; }
+    .fc-day-today {
+      background-color: #f0f9ff !important;
+    }
+
+    /* Vistas de semana/día (time-grid) */
+    .fc-timegrid-slot-label-cushion { font-size: 0.7rem; color: #94a3b8; }
+    .fc-timegrid-axis-cushion { font-size: 0.7rem; color: #94a3b8; }
+    .fc-timegrid-slot { height: 2.6rem !important; }
+    .fc-timegrid-now-indicator-line { border-color: #ef4444 !important; }
+    .fc-timegrid-now-indicator-arrow { border-color: #ef4444 !important; color: #ef4444 !important; }
+    .fc-timegrid-event {
+      border-radius: 8px !important;
+      border: none !important;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+      padding: 2px 4px !important;
+    }
+    .fc-timegrid-event .fc-event-main {
+      font-size: 0.72rem !important;
+      line-height: 1.2;
+    }
+    .fc-timegrid-col.fc-day-today { background-color: #f0f9ff !important; }
+    .fc-timegrid-axis, .fc-timegrid-slot-lane { border-color: #f1f5f9 !important; }
+    .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion { color: #0284c7 !important; }
+
+/* Chips de persona en el formulario de evento */
+.chip-persona {
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  transition: all 0.15s ease;
+}
+.chip-persona:active { transform: scale(0.96); }
+
+/* Vista Agenda (lista) */
+.fc-list { border: none !important; }
+.fc-list-day-cushion { background: #f8fafc !important; font-weight: 600; font-size: 0.8rem; color: #475569; }
+.fc-list-event { cursor: pointer; }
+.fc-list-event:hover td { background-color: #f8fafc !important; }
+.fc-list-event-time { font-size: 0.78rem; color: #94a3b8; white-space: nowrap; }
+.fc-list-event-title { font-size: 0.85rem; font-weight: 500; color: #1e293b; }
+.fc-list-event-dot { border-width: 5px !important; }
+.fc-list-empty { padding: 2.5rem 1rem; color: #94a3b8; font-size: 0.85rem; }
+
+/* ======================= MODO OSCURO ======================= */
+html.dark { color-scheme: dark; }
+html.dark body { background-color: #0f172a; }
+
+/* Fondos de tarjetas y superficies (antes blancas o gris muy claro) */
+html.dark .bg-white,
+html.dark .bg-white\/90,
+html.dark .bg-slate-50 { background-color: #1e293b !important; }
+html.dark .bg-slate-100 { background-color: #273548 !important; }
+html.dark .bg-slate-200 { background-color: #334155 !important; }
+html.dark .bg-slate-800 { background-color: #f1f5f9 !important; } /* pastillas "activo" oscuras -> claras para que resalten */
+html.dark .bg-slate-800.text-white,
+html.dark .bg-slate-800 { color: #0f172a !important; }
+
+/* Bordes */
+html.dark .border-slate-100,
+html.dark .border-slate-200 { border-color: #334155 !important; }
+html.dark .divide-slate-100 > * + * { border-color: #334155 !important; }
+
+/* Texto */
+html.dark .text-slate-900,
+html.dark .text-slate-800 { color: #f1f5f9 !important; }
+html.dark .text-slate-700,
+html.dark .text-slate-600 { color: #cbd5e1 !important; }
+html.dark .text-slate-500,
+html.dark .text-slate-400 { color: #94a3b8 !important; }
+html.dark .placeholder-slate-300::placeholder,
+html.dark .placeholder-slate-400::placeholder { color: #64748b !important; }
+
+/* Insignias / fondos de color suave -> versión oscura con el mismo acento */
+html.dark .bg-indigo-50  { background-color: #312e6b !important; }
+html.dark .bg-indigo-100 { background-color: #3b3480 !important; }
+html.dark .bg-sky-50     { background-color: #0c3a52 !important; }
+html.dark .bg-sky-100    { background-color: #0e4a67 !important; }
+html.dark .bg-emerald-50 { background-color: #0d3b30 !important; }
+html.dark .bg-rose-50    { background-color: #4a1d24 !important; }
+html.dark .bg-rose-100   { background-color: #5c232b !important; }
+html.dark .bg-amber-50   { background-color: #4a3a12 !important; }
+html.dark .bg-fuchsia-50 { background-color: #4a1d52 !important; }
+html.dark .bg-purple-50  { background-color: #3a2166 !important; }
+html.dark .bg-pink-50    { background-color: #4a1d3a !important; }
+
+html.dark .text-indigo-600, html.dark .text-indigo-700 { color: #a5b4fc !important; }
+html.dark .text-sky-600, html.dark .text-sky-700       { color: #7dd3fc !important; }
+html.dark .text-emerald-600, html.dark .text-emerald-700 { color: #6ee7b7 !important; }
+html.dark .text-rose-600, html.dark .text-rose-700     { color: #fda4af !important; }
+html.dark .text-amber-600, html.dark .text-amber-700, html.dark .text-amber-800 { color: #fcd34d !important; }
+html.dark .text-fuchsia-600, html.dark .text-fuchsia-700 { color: #f0abfc !important; }
+html.dark .text-purple-600, html.dark .text-purple-700 { color: #d8b4fe !important; }
+html.dark .text-pink-600, html.dark .text-pink-700     { color: #f9a8d4 !important; }
+
+html.dark .border-sky-200,
+html.dark .border-emerald-200,
+html.dark .border-amber-200 { border-color: rgba(255,255,255,0.12) !important; }
+
+/* Franja de aviso offline: se mantiene oscura en ambos temas, sin cambios */
+
+/* Botón de tema */
+html.dark #btn-modo-oscuro { background-color: #334155; }
+html.dark #btn-modo-oscuro:hover { background-color: #475569; }
+
+/* Modales y tarjetas concretas */
+html.dark #modal-doc-preview { background-color: #0f172a !important; }
+
+/* --- FullCalendar en modo oscuro --- */
+html.dark .fc-toolbar-title { color: #f1f5f9 !important; }
+html.dark .fc-col-header-cell-cushion { color: #94a3b8 !important; }
+html.dark .fc-daygrid-day-number { color: #cbd5e1 !important; }
+html.dark .fc-button { background-color: #1e293b !important; border-color: #334155 !important; color: #cbd5e1 !important; }
+html.dark .fc-button:hover { background-color: #273548 !important; color: #f1f5f9 !important; }
+html.dark .fc-button-active { background-color: #0c3a52 !important; border-color: #38bdf8 !important; color: #7dd3fc !important; }
+html.dark .fc-scrollgrid,
+html.dark .fc-scrollgrid table,
+html.dark .fc-theme-standard td,
+html.dark .fc-theme-standard th { border-color: #334155 !important; }
+html.dark .fc-daygrid-day,
+html.dark .fc-timegrid-slot-lane,
+html.dark .fc-list,
+html.dark .fc-list-day-cushion { background-color: #1e293b !important; }
+html.dark .fc-day-today,
+html.dark .fc-timegrid-col.fc-day-today { background-color: #16324a !important; }
+html.dark .fc-col-header-cell.fc-day-today .fc-col-header-cell-cushion { color: #7dd3fc !important; }
+html.dark .fc-list-event:hover td { background-color: #273548 !important; }
+html.dark .fc-list-event-title { color: #f1f5f9 !important; }
+html.dark .fc-list-event-time { color: #94a3b8 !important; }
+html.dark .fc-list-empty { background-color: #1e293b !important; color: #64748b !important; }
+html.dark .fc-timegrid-axis-cushion,
+html.dark .fc-timegrid-slot-label-cushion { color: #64748b !important; }
+
+/* Botones de día de la semana (repetición semanal) y chips de avisos */
+.dia-rep, .chip-aviso {
+  border: 1px solid #e2e8f0; background: #fff; color: #475569; font-weight: 600;
+  border-radius: 9999px; cursor: pointer; transition: transform .1s;
+}
+.dia-rep { width: 2.1rem; height: 2.1rem; font-size: .8rem; }
+.chip-aviso { padding: .3rem .7rem; font-size: .75rem; }
+.dia-rep:active, .chip-aviso:active { transform: scale(.95); }
+.dia-rep.activo, .chip-aviso.activo { background: #0284c7; border-color: #0284c7; color: #fff; }
+html.dark .dia-rep, html.dark .chip-aviso { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+html.dark .dia-rep.activo, html.dark .chip-aviso.activo { background: #0ea5e9; border-color: #0ea5e9; color: #0f172a; }
+
+/* Botón del buscador del calendario */
+.filtro-cal {
+  font-size: .75rem; font-weight: 600; padding: .35rem .75rem; border-radius: 9999px; white-space: nowrap;
+  border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer;
+}
+html.dark .filtro-cal { background: #1e293b; border-color: #334155; color: #cbd5e1; }
+
+
+/* Agenda: tarjetas por evento (lista simple) */
+.fc-list-table, .fc-list-table tbody { display: block; width: 100%; }
+.fc-list-table tr.fc-list-day { display: block; }
+.fc-list-table tr.fc-list-day th { display: block; border: none !important; background: transparent !important; padding: 0 !important; }
+.fc-list-day-cushion { display: block !important; background: transparent !important; padding: 14px 4px 4px !important; font-size: 0.95rem !important; font-weight: 700 !important; color: #334155 !important; text-transform: capitalize; }
+.fc-list-table tr.fc-list-event { display: flex; flex-direction: column; margin: 6px 0; padding: 8px 12px 8px 14px; background: #ffffff; border: 1px solid #e2e8f0; border-left: 6px solid var(--ag-color, #2563eb); border-radius: 14px; box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+.fc-list-table tr.fc-list-event td { display: block; border: none !important; padding: 0 !important; background: transparent !important; }
+.fc-list-event-graphic { display: none !important; }
+.fc-list-event-title { order: 1; font-size: 1rem !important; font-weight: 700 !important; color: #0f172a !important; }
+.fc-list-event-time { order: 2; font-size: 0.8rem !important; color: #475569 !important; margin-top: 1px; width: auto !important; }
+.fc-list-event-title .ag-extra { margin-top: 3px; font-weight: 400; }
+.fc-list-event-title .ag-lugar { font-size: 0.8rem; color: #0369a1; }
+.fc-list-event-title .ag-desc { font-size: 0.8rem; color: #64748b; white-space: pre-line; }
+.fc-list-event:hover td { background: transparent !important; }
+.fc-list-empty { border: none !important; }
+
+/* Título del calendario pulsable (selector de fecha) */
+.fc .fc-toolbar-title { cursor: pointer; }
+.fc .fc-toolbar-title::after { content: ' ▾'; font-size: .7em; opacity: .55; }
+
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Modo oscuro: agenda (tarjetas) y otros fondos translúcidos */
+html.dark .fc-list-table tr.fc-list-event { background: #1e293b; border-color: #334155; border-left-color: var(--ag-color, #2563eb); box-shadow: none; }
+html.dark .fc-list-day-cushion { color: #e2e8f0 !important; background: transparent !important; }
+html.dark .fc-list-event-title { color: #f1f5f9 !important; }
+html.dark .fc-list-event-time { color: #cbd5e1 !important; }
+html.dark .fc-list-event-title .ag-lugar { color: #7dd3fc; }
+html.dark .fc-list-event-title .ag-desc { color: #94a3b8; }
+html.dark .fc-list-table tr.fc-list-event td { background: transparent !important; }
+html.dark .fc-list-event:hover td { background: transparent !important; }
+html.dark .fc-list-empty { background: transparent !important; }
+html.dark .bg-white\/60, html.dark .bg-white\/70, html.dark .bg-white\/80 { background-color: rgba(30, 41, 59, 0.6) !important; }
+html.dark .bg-violet-50 { background-color: #35216b !important; }
+html.dark .text-violet-700 { color: #c4b5fd !important; }
+html.dark .bg-rose-50\/60 { background-color: rgba(74, 29, 36, 0.6) !important; }
+
+/* Fotos de perfil: cabe en el tamaño del texto, y llena el círculo dentro de un avatar */
+.av-foto{width:1.1em;height:1.1em;border-radius:50%;object-fit:cover;vertical-align:-0.2em;display:inline-block}
+.sg-av .av-foto,.overflow-hidden .av-foto{width:100%;height:100%;vertical-align:baseline;display:block}
+
+:root{--ac:#2c6bed;--ac2:#7c3aed;--rb:18px;--rbs:4px;--zt:1}
+
+/* Entrada suave de los modales/hojas inferiores (nueva tarea, pago, estado...): el fondo se
+   desvanece y la tarjeta sube desde abajo, en vez de aparecer de golpe. */
+.bg-slate-900\/40.backdrop-blur-sm{animation:sgFondoIn .16s ease both}
+.rounded-t-3xl.sm\:rounded-3xl{animation:sgPanelIn .22s cubic-bezier(.22,1,.36,1) both}
+@keyframes sgFondoIn{from{opacity:0}to{opacity:1}}
+@keyframes sgPanelIn{from{transform:translateY(24px);opacity:.4}to{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){.bg-slate-900\/40.backdrop-blur-sm,.rounded-t-3xl.sm\:rounded-3xl{animation:none}}

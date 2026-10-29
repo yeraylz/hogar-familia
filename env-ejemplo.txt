@@ -1,0 +1,27 @@
+# Copia este archivo con el nombre .env (en esta misma carpeta) y rellena los valores que uses.
+# Nunca subas el .env a ningún sitio: puede contener secretos.
+
+# Actualización automática de la IP en Cloudflare (opcional, para acceder desde fuera de casa
+# con un dominio propio en vez de la IP). Déjalo en blanco si no lo necesitas.
+CF_API_TOKEN=pega_aqui_tu_token_de_cloudflare
+CF_ZONE_ID=pega_aqui_el_id_de_la_zona
+CF_DDNS_NOMBRES=hogar.tudominio.com
+
+# Cifrado en reposo (opcional): si se define, las fotos de perfil y los tickets de gastos se
+# guardan cifrados (AES-256-GCM) en la base de datos y en disco.
+# Genérala con:  openssl rand -hex 32
+# Guarda una copia fuera del servidor: sin ella, los datos cifrados no se pueden leer.
+HOGAR_CLAVE_CHAT=
+
+# Nombres de los perfiles de la casa, separados por comas (p. ej. "Ana,Luis,Casa"). Si lo dejas
+# en blanco, se crean unos nombres de ejemplo que puedes renombrar luego desde la app.
+HOGAR_PERFILES=
+
+# Ubicación para el tiempo del saludo de "Hoy" (coordenadas decimales). Por defecto, Madrid.
+HOGAR_LAT=
+HOGAR_LON=
+
+# URL del menú del comedor del colegio, si tu colegio lo publica en una web con un patrón fijo
+# (opcional). Admite los marcadores {MM} (mes, 2 cifras), {M} (mes) y {AA} (año, 2 cifras).
+# Ejemplo: https://miwebcolegio.com/comedor/menu_{MM}_{AA}.pdf
+HOGAR_MENU_COLE_URL=

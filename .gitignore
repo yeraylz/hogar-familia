@@ -1,0 +1,16 @@
+# Secretos y configuración local
+.env
+
+# Datos de la familia (base de datos, copias de seguridad, archivos subidos)
+datos/
+*.db
+*.db-wal
+*.db-shm
+
+# Binario compilado
+hogar
+/hogar-familia
+
+# Editor / SO
+.DS_Store
+*.swp

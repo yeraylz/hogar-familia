@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Hogar Familia</title>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#4f46e5">
+  <script>
+    // Aplicar el tema (oscuro/claro) antes de pintar, para que no haya parpadeo al cargar.
+    (function() {
+      var guardado = localStorage.getItem('tema');
+      var oscuro = guardado ? guardado === 'oscuro' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (oscuro) document.documentElement.classList.add('dark');
+    })();
+  </script>
+  <link rel="icon" href="/icons/icon-192.png">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Hogar">
+  <link rel="stylesheet" href="/css/tailwind.css">
+  <link rel="stylesheet" href="/css/fuentes.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <!-- FullCalendar: primero la copia local (scripts/descargar-librerias.sh); si no está, se pide a jsDelivr -->
+  <script src="/vendor/fullcalendar.min.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen pb-16 antialiased">
+  <div id="banner-offline" class="hidden fixed top-0 left-0 right-0 z-50 text-center text-xs font-semibold py-1.5 bg-slate-800 text-white" style="padding-top: calc(0.375rem + env(safe-area-inset-top, 0px))"></div>
+
+  <!-- PANTALLA DE LOGIN (¿quién eres?) -->
+  <div id="pantalla-login" class="hidden fixed inset-0 z-[60] bg-slate-50 flex items-center justify-center p-6">
+    <div class="w-full max-w-xs">
+
+      <!-- Paso 1: elegir persona -->
+      <div id="login-paso-personas">
+        <p class="text-center text-lg font-bold text-slate-900 mb-1">¿Quién eres?</p>
+        <p class="text-center text-xs text-slate-400 mb-6">Elige tu perfil para este dispositivo</p>
+        <div id="login-lista-personas" class="grid grid-cols-2 gap-3"></div>
+      </div>
+
+      <!-- Paso 2: PIN (entrar o crear) -->
+      <div id="login-paso-pin" class="hidden">
+        <button type="button" onclick="volverAPersonas()" class="text-xs font-semibold text-slate-400 mb-4">← Atrás</button>
+        <p id="login-pin-titulo" class="text-center text-lg font-bold text-slate-900 mb-1">Hola</p>
+        <p id="login-pin-subtitulo" class="text-center text-xs text-slate-400 mb-6">Introduce tu PIN</p>
+        <input id="login-pin-input" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"
+          class="w-full text-center text-3xl tracking-[0.5em] bg-white border border-slate-200 rounded-2xl py-3 mb-2 focus:outline-none focus:border-sky-500" placeholder="····">
+        <input id="login-pin-confirmar" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off"
+          class="hidden w-full text-center text-3xl tracking-[0.5em] bg-white border border-slate-200 rounded-2xl py-3 mb-2 focus:outline-none focus:border-sky-500" placeholder="Repite el PIN">
+        <p id="login-pin-error" class="hidden text-center text-xs font-semibold text-rose-600 mb-2"></p>
+        <button onclick="enviarPin()" class="w-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-semibold py-3 rounded-2xl text-sm transition-all">Continuar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menú pequeño: cambiar de usuario -->
+  <!-- MODAL: Mi perfil -->
+  <div id="modal-perfil" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 max-h-[85vh] overflow-y-auto space-y-5">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Mi perfil</h3>
+        <button type="button" onclick="cerrarPerfil()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <span id="perfil-avatar" class="overflow-hidden w-14 h-14 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-2xl font-bold shrink-0">?</span>
+        <div>
+          <p id="perfil-nombre" class="text-base font-bold text-slate-900">...</p>
+          <p class="text-xs text-slate-400">Sesión en este dispositivo</p>
+        </div>
+      </div>
+
+      <div id="perfil-datos" class="space-y-3 border-t border-slate-100 pt-4"></div>
+
+      <form id="form-cambiar-pin" class="space-y-2 border-t border-slate-100 pt-4">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cambiar PIN</p>
+        <input type="password" id="perfil-pin-actual" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="PIN actual" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-center text-lg tracking-[0.4em] focus:outline-none focus:border-sky-500">
+        <input type="password" id="perfil-pin-nuevo" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="PIN nuevo" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-center text-lg tracking-[0.4em] focus:outline-none focus:border-sky-500">
+        <input type="password" id="perfil-pin-confirmar" inputmode="numeric" pattern="[0-9]*" maxlength="6" autocomplete="off" placeholder="Repite el PIN nuevo" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-center text-lg tracking-[0.4em] focus:outline-none focus:border-sky-500">
+        <p id="perfil-pin-mensaje" class="hidden text-xs font-semibold"></p>
+        <button type="submit" class="w-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white font-semibold py-2.5 rounded-xl text-sm transition-all">Guardar PIN</button>
+      </form>
+
+      <div class="border-t border-slate-100 pt-3 space-y-1">
+        <a href="/backup" class="flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-medium text-slate-700">📥 Descargar copia de seguridad</a>
+        <button type="button" onclick="cerrarPerfil(); mostrarVersion();" class="w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-slate-50 text-sm font-medium text-slate-700">ℹ️ Versión y novedades</button>
+        <button type="button" onclick="cerrarPerfil(); cerrarSesionUsuario();" class="w-full text-left flex items-center gap-2 px-3 py-2.5 rounded-xl hover:bg-rose-50 text-sm font-medium text-rose-600">🔄 Cambiar de usuario</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: versión y novedades -->
+  <div id="modal-version" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 max-h-[80vh] flex flex-col">
+      <div class="flex items-center justify-between mb-1 shrink-0">
+        <h3 class="text-base font-bold text-slate-900">Hogar Familia</h3>
+        <button type="button" onclick="cerrarVersion()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+      <p class="text-xs text-slate-400 mb-4 shrink-0">Versión <span id="version-actual-numero" class="font-semibold text-slate-600"></span></p>
+      <div id="lista-versiones" class="space-y-4 overflow-y-auto pr-1"></div>
+    </div>
+  </div>
+
+  <!-- Header amplio -->
+  <header class="sticky top-0 z-10 bg-white/90 backdrop-blur-md border-b border-slate-200 px-4 pt-4 pb-3 shadow-sm" style="padding-top: calc(1rem + env(safe-area-inset-top, 0px))">
+    <div class="2xl:max-w-7xl 2xl:mx-auto flex items-center justify-between mb-3">
+      <h1 class="text-xl font-bold tracking-tight text-slate-900" id="titulo-modulo">Hoy</h1>
+      <div class="flex items-center gap-2">
+        <button id="chip-usuario-actual" onclick="mostrarPerfil()" class="hidden items-center gap-1 text-xs font-semibold pl-1 pr-2 py-1 rounded-full bg-slate-100 hover:bg-slate-200 transition-colors">
+          <span id="chip-usuario-avatar" class="overflow-hidden w-5 h-5 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold">?</span>
+          <span id="chip-usuario-nombre">...</span>
+        </button>
+        <button id="btn-modo-oscuro" onclick="alternarModoOscuro()" aria-label="Cambiar tema" class="w-8 h-8 rounded-full flex items-center justify-center text-base bg-slate-100 hover:bg-slate-200 transition-colors">🌙</button>
+        <span id="contador-general" class="text-xs font-semibold px-2.5 py-1 bg-emerald-50 text-emerald-700 rounded-full border border-emerald-200">0 pendientes</span>
+      </div>
+    </div>
+
+    <!-- Pestañas -->
+    <div id="barra-pestanas" class="2xl:max-w-7xl 2xl:mx-auto grid grid-cols-6 gap-1 p-1 bg-slate-100 rounded-xl border border-slate-200 font-semibold">
+      <button id="tab-hoy" onclick="cambiarModulo('hoy')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg bg-white shadow-sm text-slate-900 transition-all"><span class="text-base leading-none">🏠</span><span class="text-[9px] leading-none">Hoy</span></button>
+      <button id="tab-compra" onclick="cambiarModulo('compra')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition-all"><span class="text-base leading-none">🛒</span><span class="text-[9px] leading-none">Compra</span></button>
+      <button id="tab-tareas" onclick="cambiarModulo('tareas')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition-all"><span class="text-base leading-none">✅</span><span class="text-[9px] leading-none">Tareas</span></button>
+      <button id="tab-calendario" onclick="cambiarModulo('calendario')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition-all"><span class="text-base leading-none">📅</span><span class="text-[9px] leading-none">Cal.</span></button>
+      <button id="tab-pagos" onclick="cambiarModulo('pagos')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition-all"><span class="text-base leading-none">💶</span><span class="text-[9px] leading-none">Dinero</span></button>
+      <button id="tab-mas" onclick="cambiarModulo('mas')" class="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-lg text-slate-500 hover:text-slate-900 transition-all"><span class="text-base leading-none">⋯</span><span class="text-[9px] leading-none">Más</span></button>
+    </div>
+  </header>
+
+  <main class="2xl:max-w-7xl 2xl:mx-auto px-4 space-y-6 mt-6">
+
+    <!-- SECCIÓN COMPRA -->
+    <!-- SECCIÓN HOY (DASHBOARD) -->
+    <div id="modulo-hoy" class="space-y-6">
+      <div id="hoy-familia-arriba" class="space-y-2 empty:hidden"></div>
+      <div id="hoy-alertas" class="space-y-2 empty:hidden"></div>
+      <div id="hoy-eventos" class="space-y-2"></div>
+      <div id="hoy-tareas" class="space-y-2"></div>
+      <div id="hoy-proximos" class="space-y-2"></div>
+      <div id="hoy-compra" class="space-y-2"></div>
+      <div id="hoy-familia"></div>
+    </div>
+
+    <div id="modulo-compra" class="space-y-5 hidden">
+      <!-- Añadir producto -->
+      <form id="form-producto" class="relative bg-white rounded-2xl border border-slate-200 shadow-sm p-2 focus-within:border-emerald-400 transition-colors">
+        <div class="flex items-center gap-2">
+          <input type="text" id="producto" placeholder="Añadir producto..." required autocomplete="off" autocorrect="off" autocapitalize="sentences" spellcheck="false" enterkeyhint="done" class="flex-grow min-w-0 bg-transparent px-3 py-2.5 text-base text-slate-800 placeholder-slate-400 focus:outline-none">
+          <button type="submit" aria-label="Añadir" class="shrink-0 w-11 h-11 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white text-2xl leading-none transition-all">+</button>
+        </div>
+        <div class="flex gap-2 px-1 pt-1 pb-1">
+          <input type="text" id="cantidad-producto" placeholder="Cantidad" autocomplete="off" class="w-24 shrink-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-emerald-400">
+          <input type="text" id="supermercado-producto" list="lista-supermercados" placeholder="🏬 Súper (opcional)" autocomplete="off" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-600 placeholder-slate-400 focus:outline-none focus:border-emerald-400">
+          <datalist id="lista-supermercados">
+            <option value="Lidl">
+            <option value="Mercadona">
+            <option value="Carrefour">
+            <option value="Alcampo">
+            <option value="Eroski">
+          </datalist>
+        </div>
+        <div id="sugerencias-producto" class="hidden absolute left-0 right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden"></div>
+      </form>
+
+      <!-- Habituales -->
+      <div id="habituales-compra" class="hidden -mt-2">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wide px-1 mb-1.5">Habituales</p>
+        <div id="habituales-chips" class="flex gap-2 overflow-x-auto pb-1"></div>
+      </div>
+
+      <!-- Lista principal -->
+      <section>
+        <div class="flex items-center justify-between px-1 mb-3">
+          <h2 id="titulo-lista-compra" class="text-base font-bold text-slate-800 min-w-0">Por comprar</h2>
+          <button onclick="compartirListaCompra()" class="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2.5 py-1.5 rounded-lg hover:bg-slate-100 transition-colors">📤 Compartir</button>
+        </div>
+        <div class="flex gap-1 p-1 bg-slate-100 rounded-xl mb-3 text-xs font-semibold">
+          <button type="button" data-vista-compra="super" onclick="cambiarVistaCompra('super')" class="flex-1 py-1.5 rounded-lg">🏬 Por súper</button>
+          <button type="button" data-vista-compra="seccion" onclick="cambiarVistaCompra('seccion')" class="flex-1 py-1.5 rounded-lg">🥬 Por sección</button>
+          <button type="button" data-vista-compra="alfa" onclick="cambiarVistaCompra('alfa')" class="flex-1 py-1.5 rounded-lg">🔤 A-Z</button>
+        </div>
+        <div id="lista-activa" class="space-y-4"></div>
+      </section>
+
+      <!-- Ya comprados -->
+      <section id="seccion-comprados" class="hidden">
+        <div class="flex items-center justify-between px-1 mb-1">
+          <h2 id="titulo-comprados" class="text-xs font-bold text-slate-400 uppercase tracking-wider">Ya comprado</h2>
+          <button onclick="limpiarComprados()" class="text-xs font-semibold text-slate-400 hover:text-rose-600 px-2.5 py-1.5 rounded-lg hover:bg-rose-50 transition-colors">Vaciar</button>
+        </div>
+        <p class="text-xs text-slate-400 px-1 mb-2">Toca un producto para pasarlo a "Por comprar" cuando te haga falta.</p>
+        <input id="buscar-comprados" type="search" placeholder="Buscar en lo ya comprado…" oninput="filtrarComprados(this.value)" class="w-full mb-2 px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:border-emerald-400">
+        <div id="lista-comprados" class="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100 overflow-hidden"></div>
+      </section>
+    </div>
+
+    <!-- SECCIÓN TAREAS -->
+    <div id="modulo-tareas" class="space-y-6 hidden">
+      <form id="form-tarea" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div id="aviso-editando-tarea" class="hidden flex items-center justify-between text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2">
+          <span>✏️ Editando una tarea existente</span>
+          <button type="button" onclick="cancelarEdicionTarea()" class="underline">Cancelar</button>
+        </div>
+        <input type="text" id="titulo-tarea" placeholder="Ej. Limpiar el baño, Sacar la basura..." required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">📅 Fecha (opcional)</label>
+            <input type="date" id="fecha-tarea" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+          </div>
+    
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">👤 Asignar a</label>
+            <select id="asignado-tarea" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="Todos">👥 Todos</option>
+              <!-- Cambia estos nombres por los de las personas de tu casa -->
+              <option value="Persona 1">👤 Persona 1</option>
+              <option value="Persona 2">👤 Persona 2</option>
+              <option value="Persona 3">👤 Persona 3</option>
+              <option value="Persona 4">👤 Persona 4</option>
+            </select>
+          </div>
+    
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">🔁 Repetir</label>
+            <select id="repetir-tarea" onchange="actualizarUIRepeticionTarea()" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="0">No repetir</option>
+              <option value="1">Cada día</option>
+              <option value="7">Cada semana</option>
+              <option value="14">Cada 2 semanas</option>
+              <option value="15">Cada 15 días</option>
+              <option value="30">Cada 30 días</option>
+              <option value="mes">Cada mes (mismo día)</option>
+              <option value="dias">Días de la semana…</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="fila-dias-tarea" class="hidden flex flex-wrap gap-1.5 items-center">
+          <span class="text-[10px] font-bold text-slate-400 uppercase mr-1">Se repite</span>
+          <div id="chips-dias-tarea" class="flex flex-wrap gap-1.5"></div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">⏰ Recordar a las</label>
+            <input type="time" id="hora-tarea" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">❗ Prioridad</label>
+            <select id="prioridad-tarea" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="0">Normal</option>
+              <option value="1">Alta</option>
+              <option value="-1">Baja</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="text-[10px] font-bold text-slate-400 uppercase">☑ Subtareas (opcional)</label>
+          <div id="lista-subtareas-form" class="space-y-1 my-1"></div>
+          <div class="flex gap-2">
+            <input type="text" id="subtarea-input" maxlength="120" placeholder="Ej. Baño, cocina, suelos..." autocomplete="off" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+            <button type="button" onclick="anadirSubtareaForm()" class="shrink-0 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl">＋</button>
+          </div>
+        </div>
+    
+        <button type="submit" id="btn-submit-tarea" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">
+          ➕ Añadir Tarea
+        </button>
+      </form>
+    
+      <div id="barra-filtros-tareas" class="flex items-center gap-2"></div>
+
+      <section>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Pendientes para hoy / Vencidas</h2>
+        <div id="lista-tareas-pendientes" class="space-y-2"></div>
+      </section>
+
+      <section class="pt-3 border-t border-slate-200">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Próximas</h2>
+        <div id="lista-tareas-proximas" class="space-y-2"></div>
+      </section>
+
+      <section class="pt-3 border-t border-slate-200">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 px-1">Completadas</h2>
+        <div id="lista-tareas-completadas" class="space-y-2"></div>
+      </section>
+    </div>
+
+    <!-- SECCIÓN CALENDARIO -->
+    <div id="modulo-calendario" class="space-y-6 hidden">
+      
+      <!-- Activar Notificaciones Push -->
+      <button id="btn-permiso-notif" onclick="solicitarPermisoNotificaciones()" class="w-full py-2.5 px-4 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-semibold rounded-xl flex items-center justify-between">
+        <span>🔔 Activar Notificaciones en el móvil</span>
+        <span class="underline">Permitir</span>
+      </button>
+
+      <!-- Botón flotante para crear evento o cumpleaños -->
+      <button id="fab-nuevo-evento" onclick="mostrarMenuNuevoEvento()" aria-label="Nuevo evento"
+        class="fixed right-4 z-40 w-14 h-14 rounded-full bg-sky-600 hover:bg-sky-700 active:scale-95 text-white text-3xl leading-none shadow-lg flex items-center justify-center transition-all"
+        style="bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));">+</button>
+
+      <!-- Menú: elegir tipo de evento -->
+      <div id="menu-nuevo-evento" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-slate-900/40 backdrop-blur-sm p-4" onclick="if(event.target===this) cerrarMenuNuevoEvento()">
+        <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-2 space-y-1">
+          <button type="button" onclick="elegirTipoNuevoEvento('evento')" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left transition-colors">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-xl">📅</span>
+            <span>
+              <p class="text-sm font-semibold text-slate-800">Evento</p>
+              <p class="text-xs text-slate-400">Cita, quedada, recordatorio...</p>
+            </span>
+          </button>
+          <button type="button" onclick="elegirTipoNuevoEvento('cumple')" class="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 text-left transition-colors">
+            <span class="w-11 h-11 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">🎂</span>
+            <span>
+              <p class="text-sm font-semibold text-slate-800">Cumpleaños</p>
+              <p class="text-xs text-slate-400">Se repite solo cada año</p>
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <form id="form-evento" class="hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div id="aviso-editando-evento" class="hidden text-xs font-semibold text-sky-700 bg-sky-50 border border-sky-200 rounded-xl px-3 py-2">
+          ✏️ Editando un evento existente
+        </div>
+        <div id="aviso-tipo-cumple" class="hidden text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+          🎂 Se guardará como cumpleaños y se repetirá cada año
+        </div>
+
+        <input type="text" id="titulo-evento" placeholder="Título del evento" required autocomplete="off" class="w-full bg-transparent text-lg font-semibold text-slate-900 placeholder-slate-300 border-0 border-b-2 border-slate-200 focus:border-sky-500 focus:outline-none pb-2 transition-colors">
+
+        <!-- Cuándo -->
+        <div class="flex gap-3">
+          <span class="w-6 text-center text-lg pt-1.5" aria-hidden="true">🕒</span>
+          <div class="flex-grow space-y-2 min-w-0">
+            <div class="flex items-center gap-3">
+              <input type="date" id="fecha-evento" required class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+              <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 shrink-0 cursor-pointer select-none">
+                Todo el día
+                <span class="relative inline-flex items-center">
+                  <input type="checkbox" id="todo-dia-evento" checked onchange="alternarTodoDiaEvento()" class="sr-only peer">
+                  <span class="w-10 h-6 bg-slate-200 rounded-full peer-checked:bg-sky-600 transition-colors"></span>
+                  <span class="absolute left-0.5 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform peer-checked:translate-x-4"></span>
+                </span>
+              </label>
+            </div>
+            <div id="fila-horas-evento" class="hidden flex items-center gap-2">
+              <input type="time" id="hora-inicio-evento" onchange="actualizarHoraFinPorDefecto()" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+              <span class="text-slate-400">–</span>
+              <input type="time" id="hora-fin-evento" class="flex-1 min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+            </div>
+            <div id="fila-fecha-fin-evento" class="flex items-center gap-2">
+              <span class="text-xs font-semibold text-slate-400 shrink-0">hasta</span>
+              <input type="date" id="fecha-fin-evento" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+            </div>
+          </div>
+        </div>
+
+        <!-- Para quién -->
+        <div class="flex gap-3">
+          <span class="w-6 text-center text-lg pt-1" aria-hidden="true">👤</span>
+          <div id="chips-persona-evento" class="flex flex-wrap gap-1.5">
+            <button type="button" data-persona="Todos" onclick="seleccionarPersonaEvento('Todos')" class="chip-persona">👥 Todos</button>
+            <!-- Cambia estos nombres por los de las personas de tu casa -->
+            <button type="button" data-persona="Persona 1" onclick="seleccionarPersonaEvento('Persona 1')" class="chip-persona">👤 Persona 1</button>
+            <button type="button" data-persona="Persona 2" onclick="seleccionarPersonaEvento('Persona 2')" class="chip-persona">👤 Persona 2</button>
+            <button type="button" data-persona="Persona 3" onclick="seleccionarPersonaEvento('Persona 3')" class="chip-persona">👤 Persona 3</button>
+            <button type="button" data-persona="Persona 4" onclick="seleccionarPersonaEvento('Persona 4')" class="chip-persona">👤 Persona 4</button>
+          </div>
+          <input type="hidden" id="persona-evento" value="Todos">
+        </div>
+
+        <!-- Repetición -->
+        <div class="flex gap-3 items-start">
+          <span class="w-6 text-center text-lg pt-1.5" aria-hidden="true">🔁</span>
+          <div id="bloque-repeticion" class="flex-grow min-w-0 space-y-2">
+            <select id="repeticion-evento" onchange="actualizarUIRepeticion(true)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+              <option value="">No se repite</option>
+              <option value="diaria">Se repite cada día</option>
+              <option value="semanal">Se repite cada semana</option>
+              <option value="mensual">Se repite cada mes</option>
+              <option value="anual">Se repite cada año</option>
+            </select>
+            <div id="fila-anio-nacimiento" class="hidden flex items-center gap-2">
+              <span class="text-xs font-semibold text-slate-400 shrink-0">🎂 Año de nacimiento</span>
+              <input type="number" id="anio-nacimiento-evento" min="1900" max="2100" placeholder="ej. 2018" class="w-28 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+              <span class="text-[11px] text-slate-400">(opcional, muestra la edad)</span>
+            </div>
+            <div id="detalle-repeticion" class="hidden space-y-2">
+              <div class="flex items-center gap-2 text-sm text-slate-600">
+                <span>Cada</span>
+                <input type="number" id="repetir-cada-evento" min="1" max="99" value="1" class="w-16 bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-sm text-center text-slate-700 focus:outline-none focus:border-sky-500">
+                <span id="unidad-repeticion">semanas</span>
+              </div>
+              <div id="dias-repeticion" class="hidden flex flex-wrap gap-1.5">
+                <button type="button" data-dia="1" onclick="alternarDiaRepeticion(1)" class="dia-rep">L</button>
+                <button type="button" data-dia="2" onclick="alternarDiaRepeticion(2)" class="dia-rep">M</button>
+                <button type="button" data-dia="3" onclick="alternarDiaRepeticion(3)" class="dia-rep">X</button>
+                <button type="button" data-dia="4" onclick="alternarDiaRepeticion(4)" class="dia-rep">J</button>
+                <button type="button" data-dia="5" onclick="alternarDiaRepeticion(5)" class="dia-rep">V</button>
+                <button type="button" data-dia="6" onclick="alternarDiaRepeticion(6)" class="dia-rep">S</button>
+                <button type="button" data-dia="0" onclick="alternarDiaRepeticion(0)" class="dia-rep">D</button>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-semibold text-slate-400 shrink-0">hasta</span>
+                <input type="date" id="repetir-hasta-evento" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-sky-500">
+                <span class="text-[11px] text-slate-400 shrink-0">(vacío = sin fin)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Avisos (se puede marcar más de uno) -->
+        <div class="flex gap-3 items-start">
+          <span class="w-6 text-center text-lg pt-1" aria-hidden="true">🔔</span>
+          <div class="flex-grow min-w-0">
+            <div id="chips-avisos-evento" class="flex flex-wrap gap-1.5"></div>
+            <p id="ayuda-avisos-evento" class="text-[11px] text-slate-400 mt-1">Sin aviso. Toca uno o varios.</p>
+          </div>
+        </div>
+
+        <!-- Lugar -->
+        <div class="flex gap-3 items-center">
+          <span class="w-6 text-center text-lg" aria-hidden="true">📍</span>
+          <input id="ubicacion-evento" type="text" maxlength="200" placeholder="Lugar (opcional)" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-sky-500">
+        </div>
+
+        <!-- Notas -->
+        <div class="flex gap-3 items-start">
+          <span class="w-6 text-center text-lg pt-1.5" aria-hidden="true">📝</span>
+          <textarea id="descripcion-evento" rows="2" placeholder="Añadir notas (opcional)" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-sky-500 resize-none"></textarea>
+        </div>
+
+        <div class="flex gap-2 pt-1">
+          <button type="button" onclick="cancelarEdicionEvento()" class="px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm transition-all">Cancelar</button>
+          <button type="submit" id="btn-submit-evento" class="flex-grow bg-sky-600 hover:bg-sky-700 active:scale-[0.99] text-white font-semibold py-2.5 rounded-xl text-sm transition-all shadow-sm">Guardar evento</button>
+        </div>
+      </form>
+
+      <!-- Buscador -->
+      <div class="flex justify-end -mt-1">
+        <button type="button" onclick="alternarBuscadorCalendario()" aria-label="Buscar eventos" class="filtro-cal">🔍 Buscar</button>
+      </div>
+      <div id="buscador-cal" class="hidden space-y-2">
+        <input type="search" id="buscar-evento-input" oninput="buscarEventosCalendario()" placeholder="Buscar eventos (título o notas)..." autocomplete="off" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-sky-500">
+        <div id="resultados-buscar-cal" class="space-y-1.5"></div>
+      </div>
+
+      <div class="-mx-4 bg-white overflow-hidden">
+        <div id="calendar"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN PAGOS / FACTURAS -->
+    <div id="modulo-pagos" class="space-y-6 hidden">
+      <div class="flex gap-1 p-1 bg-slate-100 rounded-2xl">
+        <button id="tab-pagos-gastos" type="button" onclick="mostrarPestanaPagos('gastos')" class="flex-1 py-2 rounded-xl text-sm font-semibold bg-white shadow-sm text-slate-900">💸 Gastos</button>
+        <button id="tab-pagos-facturas" type="button" onclick="mostrarPestanaPagos('facturas')" class="flex-1 py-2 rounded-xl text-sm font-semibold text-slate-500">🧾 Facturas</button>
+        <button id="tab-pagos-hipoteca" type="button" onclick="mostrarPestanaPagos('hipoteca')" class="flex-1 py-2 rounded-xl text-sm font-semibold text-slate-500">🏠 Hipoteca</button>
+        <button id="tab-pagos-prevision" type="button" onclick="mostrarPestanaPagos('prevision')" class="flex-1 py-2 rounded-xl text-sm font-semibold text-slate-500">📆 Previsión</button>
+      </div>
+
+      <div id="pagos-facturas" class="hidden space-y-6">
+      <form id="form-pago" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div id="aviso-editando-pago" class="hidden flex items-center justify-between text-xs font-semibold text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200 rounded-xl px-3 py-2">
+          <span>✏️ Editando un pago existente</span>
+          <button type="button" onclick="cancelarEdicionPago()" class="underline">Cancelar</button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <input type="text" id="nombre-pago" placeholder="Ej. Luz, Internet, Seguro coche..." required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-fuchsia-500">
+          <input type="number" id="importe-pago" min="0" step="0.01" placeholder="Importe (€)" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-fuchsia-500">
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">📅 Próximo cobro</label>
+            <input type="date" id="fecha-pago" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">🔁 Frecuencia</label>
+            <select id="frecuencia-pago" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="mensual">Mensual</option>
+              <option value="bimestral">Cada 2 meses</option>
+              <option value="trimestral">Trimestral</option>
+              <option value="semestral">Semestral</option>
+              <option value="anual">Anual</option>
+              <option value="puntual">Puntual (una vez)</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">👤 Titular</label>
+            <select id="persona-pago" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="Todos">👥 Todos</option>
+              <!-- Cambia estos nombres por los de las personas de tu casa -->
+              <option value="Persona 1">👤 Persona 1</option>
+              <option value="Persona 2">👤 Persona 2</option>
+              <option value="Persona 3">👤 Persona 3</option>
+              <option value="Persona 4">👤 Persona 4</option>
+            </select>
+          </div>
+          <div class="flex items-end">
+            <button type="submit" id="btn-submit-pago" class="w-full bg-fuchsia-600 hover:bg-fuchsia-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">
+              ➕ Añadir
+            </button>
+          </div>
+        </div>
+
+        <input type="text" id="notas-pago" placeholder="Notas (opcional): nº de cuenta, referencia..." class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-xs focus:outline-none focus:border-fuchsia-500">
+      </form>
+
+      <div id="resumen-pagos"></div>
+
+      <section>
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1 px-1">Pendientes</h2>
+        <div id="lista-pagos" class="space-y-2"></div>
+      </section>
+
+      <section id="seccion-pagados" class="hidden">
+        <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 px-1">Pagados</h2>
+        <div id="lista-pagados" class="space-y-2"></div>
+        <button id="btn-ver-historial-pagos" onclick="alternarHistorialPagos()" class="w-full mt-2 text-xs font-semibold text-fuchsia-600 py-2"></button>
+      </section>
+          </div>
+
+      <div id="pagos-gastos" class="space-y-4"></div>
+
+      <div id="pagos-hipoteca" class="hidden space-y-4"></div>
+
+      <div id="pagos-prevision" class="hidden space-y-4"></div>
+    </div>
+
+    <!-- SECCIÓN MÁS (acceso a Documentos y Cole) -->
+    <div id="modulo-mas" class="space-y-3 hidden">
+      <button onclick="cambiarModulo('mis-cosas')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-violet-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center text-2xl">🔒</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Mis cosas</p>
+          <p class="text-xs text-slate-400">Tu lista y calendario privados</p>
+        </span>
+      </button>
+      <button onclick="cambiarModulo('documentos')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-indigo-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-2xl">📄</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Documentación</p>
+          <p class="text-xs text-slate-400">DNI, tarjeta sanitaria, pasaportes...</p>
+        </span>
+      </button>
+      <button onclick="cambiarModulo('cole')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-amber-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-2xl">🍽️</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Cole</p>
+          <p class="text-xs text-slate-400">Menú del comedor del cole</p>
+        </span>
+      </button>
+
+      <div class="flex items-center gap-1 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-pink-300 transition-colors">
+        <a id="card-fotos" href="#" target="_blank" rel="noopener noreferrer" onclick="return clickFotos(event)" class="flex items-center gap-3 flex-grow min-w-0 p-4 text-left">
+          <span class="w-12 h-12 shrink-0 rounded-xl bg-pink-50 text-pink-600 flex items-center justify-center text-2xl">📷</span>
+          <span class="min-w-0">
+            <p class="text-sm font-semibold text-slate-800">Fotos</p>
+            <p id="fotos-subtitulo" class="text-xs text-slate-400 truncate">Toca para configurar la dirección de Immich</p>
+          </span>
+        </a>
+        <button onclick="abrirAjusteFotos()" aria-label="Configurar dirección de Fotos" class="shrink-0 p-3 mr-1 text-slate-300 hover:text-slate-600 text-lg">⚙️</button>
+      </div>
+
+      <button onclick="cambiarModulo('reto')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-orange-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center text-2xl">💪</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Reto</p>
+          <p class="text-xs text-slate-400">Entrenos, hábitos y medidas de tu plan</p>
+        </span>
+      </button>
+
+      <button onclick="cambiarModulo('enlaces')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-emerald-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-2xl">🔗</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Enlaces</p>
+          <p class="text-xs text-slate-400">Webs y accesos importantes de la casa</p>
+        </span>
+      </button>
+
+      <button onclick="cambiarModulo('actividad')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-sky-300 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center text-2xl">🕑</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Actividad</p>
+          <p class="text-xs text-slate-400">Quién ha añadido, cambiado o borrado qué</p>
+        </span>
+      </button>
+
+      <button onclick="cambiarModulo('sistema')" class="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-slate-200 shadow-sm hover:border-slate-400 transition-colors text-left">
+        <span class="w-12 h-12 shrink-0 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-2xl">💾</span>
+        <span>
+          <p class="text-sm font-semibold text-slate-800">Copias y red</p>
+          <p class="text-xs text-slate-400">Copias de seguridad y dirección de casa</p>
+        </span>
+      </button>
+    </div>
+
+    <!-- SECCIÓN DOCUMENTACIÓN -->
+    <div id="modulo-documentos" class="space-y-5 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+      <form id="form-documento" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">👤 Familiar</label>
+            <select id="persona-documento" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="Todos">👥 Todos / Casa</option>
+              <!-- Cambia estos nombres por los de las personas de tu casa -->
+              <option value="Persona 1">👤 Persona 1</option>
+              <option value="Persona 2">👤 Persona 2</option>
+              <option value="Persona 3">👤 Persona 3</option>
+              <option value="Persona 4">👤 Persona 4</option>
+            </select>
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">🏷️ Tipo</label>
+            <select id="tipo-documento" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs text-slate-600 focus:outline-none">
+              <option value="DNI">DNI</option>
+              <option value="Pasaporte">Pasaporte</option>
+              <option value="Tarjeta sanitaria">Tarjeta sanitaria</option>
+              <option value="Seguro">Seguro</option>
+              <option value="Colegio">Colegio</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+        </div>
+        <input type="text" id="nombre-documento" placeholder="Descripción (opcional): ej. caduca en 2028" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-xs focus:outline-none focus:border-indigo-500">
+        <input type="file" id="archivo-documento" accept="image/*,application/pdf" required class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
+        <button type="submit" id="btn-subir-documento" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">
+          📤 Subir documento
+        </button>
+      </form>
+
+      <div id="filtros-persona-documento" class="flex flex-wrap gap-1.5 px-1"></div>
+
+      <div id="lista-documentos" class="grid grid-cols-2 gap-3"></div>
+    </div>
+
+    <!-- SECCIÓN COLE (menú del comedor) -->
+    <div id="modulo-cole" class="space-y-4 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+
+      <div id="cole-estado" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm"></div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-2">
+        <p class="text-xs font-bold text-slate-400 uppercase tracking-wider">¿No es el correcto? Súbelo tú</p>
+        <form id="form-menu-cole" class="flex items-center gap-2">
+          <input type="file" id="archivo-menu-cole" accept="application/pdf,image/*" required class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-amber-50 file:text-amber-700 hover:file:bg-amber-100">
+          <button type="submit" class="shrink-0 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all">Subir</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- SECCIÓN RETO -->
+    <div id="modulo-reto" class="space-y-4 hidden">
+      <button id="reto-volver" onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+      <div class="flex gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+        <button type="button" data-reto-vista="hoy" onclick="retoCambiarVista('hoy')" class="flex-1 py-1.5 rounded-lg">🏋️ Hoy</button>
+        <button type="button" data-reto-vista="comer" onclick="retoCambiarVista('comer')" class="flex-1 py-1.5 rounded-lg">🍽️ Comer</button>
+        <button type="button" data-reto-vista="medidas" onclick="retoCambiarVista('medidas')" class="flex-1 py-1.5 rounded-lg">📈 Progreso</button>
+        <button type="button" data-reto-vista="plan" onclick="retoCambiarVista('plan')" class="flex-1 py-1.5 rounded-lg">📋 Plan</button>
+      </div>
+      <div id="reto-contenido" class="space-y-4"></div>
+    </div>
+
+    <!-- SECCIÓN ENLACES -->
+    <div id="modulo-enlaces" class="space-y-4 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+
+      <form id="form-enlace" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <div id="aviso-editando-enlace" class="hidden flex items-center justify-between text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2">
+          <span>✏️ Editando un enlace</span>
+          <button type="button" onclick="cancelarEdicionEnlace()" class="underline">Cancelar</button>
+        </div>
+        <input type="text" id="titulo-enlace" maxlength="80" required autocomplete="off" placeholder="Nombre (ej. Portal del cole, Banco...)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-500">
+        <input type="text" id="url-enlace" required autocomplete="off" inputmode="url" placeholder="https://...  (para direcciones de casa usa http://)" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-emerald-500">
+        <button type="submit" id="btn-submit-enlace" class="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">➕ Añadir enlace</button>
+      </form>
+
+      <div id="lista-enlaces" class="space-y-2"></div>
+    </div>
+
+    <!-- SECCIÓN ACTIVIDAD -->
+    <div id="modulo-actividad" class="space-y-3 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+      <div id="actividad-filtros" class="flex gap-1.5 overflow-x-auto no-scrollbar pb-1"></div>
+      <div id="actividad-lista"></div>
+    </div>
+
+    <!-- SECCIÓN COPIAS Y RED -->
+    <div id="modulo-sistema" class="space-y-4 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+      <div id="sistema-contenido" class="space-y-4"></div>
+    </div>
+
+    <!-- SECCIÓN MIS COSAS (tareas y calendario personales, privados de cada persona) -->
+    <div id="modulo-mis-cosas" class="space-y-4 hidden">
+      <button onclick="cambiarModulo('mas')" class="text-xs font-semibold text-slate-400 hover:text-slate-600">← Más</button>
+      <div class="flex items-center gap-2 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2">🔒 Privado: solo tú lo ves</div>
+      <div class="flex gap-1 p-1 bg-slate-100 rounded-xl text-xs font-semibold">
+        <button type="button" id="mc-tab-tareas" onclick="misCosasCambiarVista('tareas')" class="flex-1 py-1.5 rounded-lg">📝 Tareas</button>
+        <button type="button" id="mc-tab-calendario" onclick="misCosasCambiarVista('calendario')" class="flex-1 py-1.5 rounded-lg">📅 Calendario</button>
+      </div>
+
+      <form id="mc-form-tarea" class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <input type="text" id="mc-input-tarea" maxlength="200" required autocomplete="off" placeholder="¿Qué tienes que hacer?" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500">
+        <div>
+          <label class="text-[10px] font-bold text-slate-400 uppercase">📅 Fecha (opcional)</label>
+          <input type="date" id="mc-input-tarea-fecha" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">➕ Añadir tarea</button>
+      </form>
+
+      <form id="mc-form-evento" class="hidden bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+        <input type="text" id="mc-input-evento" maxlength="200" required autocomplete="off" placeholder="¿Qué quieres recordar?" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 placeholder-slate-400 text-sm focus:outline-none focus:border-indigo-500">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">📅 Fecha</label>
+            <input type="date" id="mc-input-fecha" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+          </div>
+          <div>
+            <label class="text-[10px] font-bold text-slate-400 uppercase">🕐 Hora (opcional)</label>
+            <input type="time" id="mc-input-hora" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold py-2 rounded-xl text-sm transition-all shadow-sm">➕ Añadir recordatorio</button>
+      </form>
+
+      <div id="mis-cosas-contenido" class="space-y-2"></div>
+    </div>
+
+  </main>
+
+  <!-- MODAL EDITAR TAREA/EVENTO DE "MIS COSAS" -->
+  <div id="modal-mc-editar" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 hidden">
+    <form id="form-mc-editar" class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-mc-titulo" class="text-base font-bold text-slate-900">Editar</h3>
+        <button type="button" onclick="misCosasHojaCerrar()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+      <input type="text" id="mc-edit-texto" maxlength="200" required class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 text-sm focus:outline-none focus:border-indigo-500">
+      <div id="modal-mc-fechahora" class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="text-[10px] font-bold text-slate-400 uppercase">📅 Fecha</label>
+          <input type="date" id="mc-edit-fecha" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+        </div>
+        <div id="modal-mc-hora-wrap">
+          <label class="text-[10px] font-bold text-slate-400 uppercase">🕐 Hora</label>
+          <input type="time" id="mc-edit-hora" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-1.5 text-xs text-slate-600 focus:outline-none">
+        </div>
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" id="mc-edit-borrar" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-sm transition-all">Eliminar</button>
+        <button type="submit" class="flex-grow py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- MODAL DETALLES DEL EVENTO -->
+  <!-- MODAL EDITAR PRODUCTO (compra) -->
+  <!-- MODAL VER/BORRAR DOCUMENTO -->
+  <div id="modal-documento" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 id="modal-doc-titulo" class="text-base font-bold text-slate-900 truncate pr-2">Documento</h3>
+        <button type="button" onclick="cerrarModalDocumento()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none shrink-0">×</button>
+      </div>
+      <div id="modal-doc-preview" class="rounded-xl overflow-hidden bg-slate-50 border border-slate-200 flex items-center justify-center min-h-[160px]"></div>
+      <p id="modal-doc-info" class="text-xs text-slate-400"></p>
+      <div class="flex gap-2 pt-1">
+        <button type="button" id="modal-doc-borrar" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-sm transition-all">Eliminar</button>
+        <a id="modal-doc-abrir" href="#" data-visor="Documento" class="flex-grow text-center py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-all">Abrir / Descargar</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-compra" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4 hidden">
+    <form id="form-editar-compra" class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Editar producto</h3>
+        <button type="button" onclick="cerrarModalCompra()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+      <input type="text" id="edit-producto" required autocomplete="off" placeholder="Producto" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-base text-slate-800 focus:outline-none focus:border-emerald-400">
+      <div class="flex gap-2">
+        <input type="text" id="edit-cantidad" autocomplete="off" placeholder="Cantidad" class="w-28 shrink-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-emerald-400">
+        <input type="text" id="edit-supermercado" list="lista-supermercados" autocomplete="off" placeholder="🏬 Súper" class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-700 focus:outline-none focus:border-emerald-400">
+      </div>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="borrarDesdeModalCompra()" class="px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-semibold text-sm transition-all">Eliminar</button>
+        <button type="submit" class="flex-grow py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-sm transition-all">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- MODAL: ¿solo este / este y siguientes / toda la serie? -->
+  <div id="modal-serie" class="hidden fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-slate-900/50 backdrop-blur-sm p-4" onclick="if(event.target===this) responderAlcanceSerie(null)">
+    <div class="bg-white rounded-2xl shadow-xl w-full max-w-xs p-4 space-y-2">
+      <p id="modal-serie-titulo" class="text-sm font-bold text-slate-800 px-1">Evento repetido</p>
+      <button type="button" onclick="responderAlcanceSerie('solo')" class="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-sm font-semibold text-slate-700">Solo este evento</button>
+      <button type="button" onclick="responderAlcanceSerie('siguientes')" class="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-sm font-semibold text-slate-700">Este y los siguientes</button>
+      <button type="button" onclick="responderAlcanceSerie('todos')" class="w-full text-left p-3 rounded-xl bg-slate-50 hover:bg-slate-100 text-sm font-semibold text-slate-700">Todos los eventos de la serie</button>
+      <button type="button" onclick="responderAlcanceSerie(null)" class="w-full p-2 text-xs font-semibold text-slate-400">Cancelar</button>
+    </div>
+  </div>
+
+  <div id="modal-evento" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl space-y-4 transform transition-all scale-100">
+      <div class="flex justify-between items-start">
+        <span id="modal-persona-tag" class="text-xs font-bold px-3 py-1 rounded-full"></span>
+        <button onclick="cerrarModal()" class="text-slate-400 hover:text-slate-600 font-bold text-lg">✕</button>
+      </div>
+
+      <div>
+        <h3 id="modal-titulo" class="text-lg font-bold text-slate-900"></h3>
+        <p id="modal-fecha" class="text-xs text-slate-500 font-medium mt-1"></p>
+        <p id="modal-hora" class="text-xs text-slate-500 font-semibold mt-0.5"></p>
+        <p id="modal-notif" class="text-xs text-amber-600 font-medium mt-1"></p>
+        <a id="modal-ubicacion" href="#" target="_blank" rel="noopener" class="hidden mt-1 text-xs text-sky-600 font-medium underline"></a>
+        
+        <div id="modal-desc-box" class="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 hidden">
+          <p class="text-[10px] font-bold text-slate-400 uppercase mb-1">Detalles</p>
+          <p id="modal-descripcion" class="text-xs text-slate-700 whitespace-pre-line"></p>
+        </div>
+      </div>
+
+      <button id="modal-btn-notas" onclick="abrirNotasDesdeEvento()" class="w-full py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold text-xs rounded-xl transition-all">
+        💬 Notas
+      </button>
+      <div class="flex gap-2">
+        <button id="modal-btn-editar" class="w-full py-2.5 bg-sky-50 text-sky-700 hover:bg-sky-100 font-semibold text-xs rounded-xl transition-all">
+          ✏️ Editar
+        </button>
+        <button id="modal-btn-duplicar" onclick="duplicarEvento()" class="w-full py-2.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-semibold text-xs rounded-xl transition-all">
+          📋 Duplicar
+        </button>
+        <button id="modal-btn-borrar" class="w-full py-2.5 bg-rose-50 text-rose-600 hover:bg-rose-100 font-semibold text-xs rounded-xl transition-all">
+          🗑️ Eliminar
+        </button>
+      </div>
+      <button onclick="cerrarModal()" class="w-full py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 font-semibold text-xs rounded-xl transition-all">
+        Cerrar
+      </button>
+    </div>
+  </div>
+  <!-- MODAL: notas pegadas a un evento / tarea / pago -->
+  <div id="modal-notas" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60] flex items-end sm:items-center justify-center p-4">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+      <div class="flex items-center justify-between p-4 pb-2 shrink-0">
+        <div class="min-w-0">
+          <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notas</p>
+          <h3 id="notas-titulo" class="text-base font-bold text-slate-900 truncate"></h3>
+        </div>
+        <button type="button" onclick="cerrarNotas()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none shrink-0 pl-2">×</button>
+      </div>
+      <div id="notas-lista" class="flex-grow overflow-y-auto px-4 py-1 space-y-2 min-h-[90px]"></div>
+      <form id="form-nota" class="p-3 flex gap-2 border-t border-slate-100 shrink-0">
+        <input type="text" id="nota-texto" maxlength="500" autocomplete="off" placeholder="Escribe una nota..." class="flex-grow min-w-0 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500">
+        <button type="submit" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-all">Enviar</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: dirección de Fotos (Immich) -->
+  <div id="modal-fotos" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+    <form id="form-fotos" class="bg-white w-full max-w-sm rounded-2xl shadow-xl p-5 space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-900">Dirección de Fotos</h3>
+        <button type="button" onclick="cerrarAjusteFotos()" aria-label="Cerrar" class="text-slate-400 hover:text-slate-700 text-2xl leading-none">×</button>
+      </div>
+      <p class="text-xs text-slate-400">La web de tu Immich. Se guarda para toda la casa.</p>
+      <input type="text" id="url-fotos" autocomplete="off" inputmode="url" placeholder="https://fotos.tudominio.es" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-pink-500">
+      <p id="fotos-error" class="hidden text-xs font-semibold text-rose-600"></p>
+      <div class="flex gap-2 pt-1">
+        <button type="button" onclick="quitarAjusteFotos()" class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-sm transition-all">Quitar</button>
+        <button type="submit" class="flex-grow py-2.5 rounded-xl bg-pink-600 hover:bg-pink-700 text-white font-semibold text-sm transition-all">Guardar</button>
+      </div>
+    </form>
+  </div>
+
+  <script src="/js/offline.js"></script>
+  <script src="/js/usuarios.js"></script>
+  <script src="/js/version.js"></script>
+  <script src="/js/notas.js"></script>
+  <script src="/js/enlaces.js"></script>
+  <script src="/js/sistema.js"></script>
+  <script src="/js/gastos.js"></script>
+  <script src="/js/prevision.js"></script>
+  <script src="/js/hipoteca.js"></script>
+  <script src="/js/reto-menu.js"></script>
+  <script src="/js/reto-tecnica.js"></script>
+  <script src="/js/reto-progreso.js"></script>
+  <script src="/js/reto.js"></script>
+  <script src="/js/reto-guiado.js"></script>
+  <script src="/js/visor.js"></script>
+  <script src="/js/perfil.js"></script>
+  <script src="/js/personalizar.js"></script>
+  <script src="/js/mis-cosas.js"></script>
+  <script src="/js/menu.js"></script>
+  <script src="/js/actualizar.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>
