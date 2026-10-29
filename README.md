@@ -1,5 +1,7 @@
 # Hogar
 
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/yeraylz)
+
 Organizador familiar autoalojado: una sola app para las tareas, el calendario, los gastos
 compartidos, la hipoteca, los documentos importantes y más cosas del día a día de una casa.
 Pensada para instalarse en un servidor propio (un mini PC, una Raspberry Pi, una VPS...) con
@@ -76,6 +78,11 @@ Todas son opcionales. Ver `env-ejemplo.txt` para la lista completa con ejemplos:
   Tailwind precompilado en `web/css/`.
 - No hay base de datos de ejemplo ni datos de prueba incluidos: la app crea su propio esquema al
   arrancar por primera vez.
+
+## Apoyar el proyecto
+
+Es gratis y de código abierto, pero si te resulta útil y quieres invitarme a un café:
+[ko-fi.com/yeraylz](https://ko-fi.com/yeraylz) ☕
 
 ## Licencia
 
